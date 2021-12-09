@@ -1,0 +1,125 @@
+create or replace and compile java source named J_EXECUTE_OS_CMD as
+import java.io.*;
+public class J_EXECUTE_OS_CMD {
+	public static int execCommand(String command, String encode) {
+		int ret = 0;
+		Runtime runtime = null;
+		Process proc = null;
+		java.io.InputStream outIs = null;
+		InputStreamReader outIsr = null;
+		BufferedReader  outBr = null;
+		java.io.InputStream errIs = null;
+		InputStreamReader errIsr = null;
+		BufferedReader  errBr = null;
+
+		try {
+			String line = new String();
+			runtime = Runtime.getRuntime();
+			proc = runtime.exec(command);
+			//stdOut
+			outIs = proc.getInputStream();
+			outIsr = new InputStreamReader(outIs, encode);
+			outBr = new BufferedReader(outIsr);
+			while( (line = outBr.readLine()) != null ){
+				System.out.println(line);
+			};
+			//stdErr
+			errIs = proc.getErrorStream();
+			errIsr = new InputStreamReader(errIs, encode);
+			errBr = new BufferedReader(errIsr);
+			while( (line = errBr.readLine()) != null ){
+				if (ret == 0) {
+					ret = 1;
+					System.out.println("stdError:");
+				}
+				System.out.println(line);
+			};
+			proc.waitFor();
+			proc.destroy();
+			return ret;
+		} catch(Exception e) {
+			ret = -1;
+			System.out.println("!!!Exception Occured!!!");
+			System.out.println("StackTrace:");
+			e.printStackTrace();
+			System.out.println("ErrorMessage:");
+			System.out.println(e.getMessage());
+			return ret;
+		}finally{
+			//close stdout stream
+			try
+			{
+				if( outBr != null ){outBr.close();}
+			}
+			catch( IOException e )
+			{
+				e.printStackTrace();
+			}
+			try
+			{
+				if( outIsr != null ){outIsr.close();}
+			}
+			catch( IOException e )
+			{
+				e.printStackTrace();
+			}
+			try
+			{
+				if( outIs != null ){outIs.close();}
+			}
+			catch( IOException e )
+			{
+				e.printStackTrace();
+			}
+			
+			//close stderr stream
+			try
+			{
+				if( errBr != null ){errBr.close();}
+			}
+			catch( IOException e )
+			{
+				e.printStackTrace();
+			}
+			try
+			{
+				if( errIsr != null ){errIsr.close();}
+			}
+			catch( IOException e )
+			{
+				e.printStackTrace();
+			}
+			try
+			{
+				if( errIs != null ){errIs.close();}
+			}
+			catch( IOException e )
+			{
+				e.printStackTrace();
+			}
+			//process destroy
+			try{
+				if( proc != null ){proc.destroy();}
+			}catch (Exception e ){
+				e.printStackTrace();
+			}
+		}
+	}
+}
+/
+CREATE OR REPLACE FUNCTION EXECUTE_OS_CMD(COMMAND VARCHAR2,ENCODE VARCHAR2) RETURN NUMBER 
+AS LANGUAGE JAVA NAME 'J_EXECUTE_OS_CMD.execCommand(java.lang.String,java.lang.String) return int';
+/
+
+set serveroutput on
+declare
+  command VARCHAR2(1000);
+  returncd number;
+begin
+  dbms_java.set_output(10000000);
+  DBMS_OUTPUT.ENABLE(NULL);
+  command := 'C:\WINDOWS\system32\cmd.exe /c type j:\program\oracle\diag\rdbms\orcl112\orcl112\trace\alert_orcl112.log';
+  returncd := EXECUTE_OS_CMD(command,'UTF-8');
+  dbms_output.put_line('RETURN_CODE=' || returncd);
+end;
+/
